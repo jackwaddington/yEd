@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Builder - Easy Diagrams for yEd</title>
+
+    <!-- vis.js from CDN -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.8rem;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .panel h2 {
+            margin: 0 0 15px 0;
+            font-size: 1.1rem;
+            color: #444;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4a90d9;
+            box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.2);
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary {
+            background: #4a90d9;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3a7bc8;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .item-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .item:last-child {
+            border-bottom: none;
+        }
+
+        .item-info {
+            font-size: 0.9rem;
+        }
+
+        .item-info .group-tag {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .empty-message {
+            padding: 20px;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+        }
+
+        #network {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .export-buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .section-divider {
+            border-top: 1px solid #eee;
+            margin: 20px 0;
+            padding-top: 20px;
+        }
+
+        /* Connection type datalist styling hint */
+        input[list] {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Graph Builder</h1>
+    <p class="subtitle">Create network diagrams easily. Export to yEd for advanced editing.</p>
+
+    <div class="container">
+        <!-- Left Panel: Input Forms -->
+        <div class="left-panel">
+            <!-- Node Form -->
+            <div class="panel">
+                <h2>Step 1: Add Nodes</h2>
+                <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">
+                    What things do you have? (devices, people, places...)
+                </p>
+
+                <div class="form-group">
+                    <label for="nodeName">Name *</label>
+                    <input type="text" id="nodeName" placeholder="e.g., PS5, TV, Router">
+                </div>
+
+                <div class="form-group">
+                    <label for="nodeGroup">Group (optional)</label>
+                    <input type="text" id="nodeGroup" list="groupList" placeholder="e.g., Living Room, Kitchen">
+                    <datalist id="groupList"></datalist>
+                </div>
+
+                <button class="btn-primary" onclick="addNode()">+ Add Node</button>
+
+                <div class="item-list" id="nodeList">
+                    <div class="empty-message">No nodes yet. Add your first node above.</div>
+                </div>
+            </div>
+
+            <!-- Connection Form -->
+            <div class="panel" style="margin-top: 20px;">
+                <h2>Step 2: Add Connections</h2>
+                <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">
+                    How do your things connect to each other?
+                </p>
+
+                <div class="form-group">
+                    <label for="connFrom">From *</label>
+                    <select id="connFrom">
+                        <option value="">-- Select a node --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="connTo">To *</label>
+                    <select id="connTo">
+                        <option value="">-- Select a node --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="connType">Connection Type *</label>
+                    <input type="text" id="connType" list="connectionTypes" placeholder="e.g., HDMI, Ethernet">
+                    <datalist id="connectionTypes">
+                        <option value="HDMI">
+                        <option value="Audio Cable">
+                        <option value="Ethernet">
+                        <option value="Power">
+                        <option value="USB">
+                        <option value="Coax">
+                        <option value="Optical / TOSLINK">
+                        <option value="WiFi">
+                    </datalist>
+                </div>
+
+                <button class="btn-primary" onclick="addConnection()">+ Add Connection</button>
+
+                <div class="item-list" id="connectionList">
+                    <div class="empty-message">No connections yet. Add nodes first, then connect them.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Preview -->
+        <div class="right-panel">
+            <div class="panel">
+                <h2>Step 3: Preview & Export</h2>
+
+                <div id="network"></div>
+
+                <div class="export-buttons">
+                    <button class="btn-success" onclick="exportGraphML()">Download GraphML (for yEd)</button>
+                    <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===================
+        // DATA STORAGE
+        // ===================
+        let nodes = [];      // [{id, label, group}, ...]
+        let connections = []; // [{from, to, type}, ...]
+        let nodeIdCounter = 1;
+
+        // vis.js DataSets and Network
+        let visNodes = new vis.DataSet();
+        let visEdges = new vis.DataSet();
+        let network = null;
+
+        // Group colors for visual distinction
+        const groupColors = {};
+        const colorPalette = [
+            '#4a90d9', '#50c878', '#ff6b6b', '#ffd93d', '#6c5ce7',
+            '#a29bfe', '#fd79a8', '#00b894', '#e17055', '#74b9ff'
+        ];
+        let colorIndex = 0;
+
+        // ===================
+        // INITIALIZATION
+        // ===================
+        function initNetwork() {
+            const container = document.getElementById('network');
+            const data = { nodes: visNodes, edges: visEdges };
+            const options = {
+                nodes: {
+                    shape: 'box',
+                    margin: 10,
+                    font: { size: 14 }
+                },
+                edges: {
+                    arrows: 'to',
+                    font: { size: 12, align: 'middle' },
+                    color: { color: '#666' }
+                },
+                physics: {
+                    enabled: true,
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -50,
+                        springLength: 100
+                    },
+                    stabilization: { iterations: 100 }
+                },
+                groups: {}
+            };
+            network = new vis.Network(container, data, options);
+        }
+
+        // ===================
+        // NODE MANAGEMENT
+        // ===================
+        function addNode() {
+            const nameInput = document.getElementById('nodeName');
+            const groupInput = document.getElementById('nodeGroup');
+
+            const name = nameInput.value.trim();
+            const group = groupInput.value.trim();
+
+            if (!name) {
+                alert('Please enter a node name.');
+                return;
+            }
+
+            // Check for duplicate names
+            if (nodes.find(n => n.label.toLowerCase() === name.toLowerCase())) {
+                alert('A node with this name already exists.');
+                return;
+            }
+
+            // Assign color to new groups
+            if (group && !groupColors[group]) {
+                groupColors[group] = colorPalette[colorIndex % colorPalette.length];
+                colorIndex++;
+                updateGroupDatalist();
+            }
+
+            const node = {
+                id: nodeIdCounter++,
+                label: name,
+                group: group || null
+            };
+
+            nodes.push(node);
+
+            // Add to vis.js
+            const visNode = {
+                id: node.id,
+                label: node.label
+            };
+            if (node.group) {
+                visNode.color = {
+                    background: groupColors[node.group],
+                    border: groupColors[node.group]
+                };
+            }
+            visNodes.add(visNode);
+
+            // Clear inputs
+            nameInput.value = '';
+            groupInput.value = '';
+            nameInput.focus();
+
+            updateNodeList();
+            updateConnectionDropdowns();
+        }
+
+        function removeNode(id) {
+            // Remove associated connections first
+            connections = connections.filter(c => c.from !== id && c.to !== id);
+            visEdges.clear();
+            connections.forEach((c, i) => {
+                visEdges.add({ id: i, from: c.from, to: c.to, label: c.type });
+            });
+
+            // Remove node
+            nodes = nodes.filter(n => n.id !== id);
+            visNodes.remove(id);
+
+            updateNodeList();
+            updateConnectionList();
+            updateConnectionDropdowns();
+        }
+
+        function updateNodeList() {
+            const list = document.getElementById('nodeList');
+
+            if (nodes.length === 0) {
+                list.innerHTML = '<div class="empty-message">No nodes yet. Add your first node above.</div>';
+                return;
+            }
+
+            list.innerHTML = nodes.map(n => `
+                <div class="item">
+                    <span class="item-info">
+                        <strong>${escapeHtml(n.label)}</strong>
+                        ${n.group ? `<span class="group-tag"> (${escapeHtml(n.group)})</span>` : ''}
+                    </span>
+                    <button class="btn-danger" onclick="removeNode(${n.id})">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        function updateGroupDatalist() {
+            const datalist = document.getElementById('groupList');
+            const groups = [...new Set(nodes.map(n => n.group).filter(Boolean))];
+            datalist.innerHTML = groups.map(g => `<option value="${escapeHtml(g)}">`).join('');
+        }
+
+        // ===================
+        // CONNECTION MANAGEMENT
+        // ===================
+        function addConnection() {
+            const fromSelect = document.getElementById('connFrom');
+            const toSelect = document.getElementById('connTo');
+            const typeInput = document.getElementById('connType');
+
+            const from = parseInt(fromSelect.value);
+            const to = parseInt(toSelect.value);
+            const type = typeInput.value.trim();
+
+            if (!from || !to) {
+                alert('Please select both From and To nodes.');
+                return;
+            }
+
+            if (from === to) {
+                alert('Cannot connect a node to itself.');
+                return;
+            }
+
+            if (!type) {
+                alert('Please enter a connection type.');
+                return;
+            }
+
+            const connection = { from, to, type };
+            connections.push(connection);
+
+            // Add to vis.js
+            visEdges.add({
+                id: connections.length - 1,
+                from: from,
+                to: to,
+                label: type
+            });
+
+            // Clear type input
+            typeInput.value = '';
+
+            updateConnectionList();
+        }
+
+        function removeConnection(index) {
+            connections.splice(index, 1);
+
+            // Rebuild vis edges
+            visEdges.clear();
+            connections.forEach((c, i) => {
+                visEdges.add({ id: i, from: c.from, to: c.to, label: c.type });
+            });
+
+            updateConnectionList();
+        }
+
+        function updateConnectionList() {
+            const list = document.getElementById('connectionList');
+
+            if (connections.length === 0) {
+                list.innerHTML = '<div class="empty-message">No connections yet. Add nodes first, then connect them.</div>';
+                return;
+            }
+
+            list.innerHTML = connections.map((c, i) => {
+                const fromNode = nodes.find(n => n.id === c.from);
+                const toNode = nodes.find(n => n.id === c.to);
+                return `
+                    <div class="item">
+                        <span class="item-info">
+                            ${escapeHtml(fromNode?.label || '?')} → ${escapeHtml(toNode?.label || '?')}
+                            <span class="group-tag">(${escapeHtml(c.type)})</span>
+                        </span>
+                        <button class="btn-danger" onclick="removeConnection(${i})">Remove</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateConnectionDropdowns() {
+            const fromSelect = document.getElementById('connFrom');
+            const toSelect = document.getElementById('connTo');
+
+            const options = '<option value="">-- Select a node --</option>' +
+                nodes.map(n => `<option value="${n.id}">${escapeHtml(n.label)}</option>`).join('');
+
+            fromSelect.innerHTML = options;
+            toSelect.innerHTML = options;
+        }
+
+        // ===================
+        // EXPORT TO GRAPHML
+        // ===================
+        function exportGraphML() {
+            if (nodes.length === 0) {
+                alert('Add some nodes first before exporting.');
+                return;
+            }
+
+            let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns"
+         xmlns:y="http://www.yworks.com/xml/graphml"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key for="node" id="d0" yfiles.type="nodegraphics"/>
+  <key for="edge" id="d1" yfiles.type="edgegraphics"/>
+  <graph id="G" edgedefault="directed">
+`;
+
+            // Add nodes
+            nodes.forEach(node => {
+                const color = node.group ? groupColors[node.group] : '#CCCCCC';
+                xml += `    <node id="n${node.id}">
+      <data key="d0">
+        <y:ShapeNode>
+          <y:Geometry height="30" width="100" x="0" y="0"/>
+          <y:Fill color="${color}" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel>${escapeXml(node.label)}</y:NodeLabel>
+          <y:Shape type="roundrectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+`;
+            });
+
+            // Add edges
+            connections.forEach((conn, i) => {
+                xml += `    <edge id="e${i}" source="n${conn.from}" target="n${conn.to}">
+      <data key="d1">
+        <y:PolyLineEdge>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:EdgeLabel>${escapeXml(conn.type)}</y:EdgeLabel>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+`;
+            });
+
+            xml += `  </graph>
+</graphml>`;
+
+            // Download
+            const blob = new Blob([xml], { type: 'application/xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'graph.graphml';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ===================
+        // UTILITIES
+        // ===================
+        function clearAll() {
+            if (!confirm('Are you sure you want to clear all nodes and connections?')) {
+                return;
+            }
+
+            nodes = [];
+            connections = [];
+            nodeIdCounter = 1;
+
+            visNodes.clear();
+            visEdges.clear();
+
+            updateNodeList();
+            updateConnectionList();
+            updateConnectionDropdowns();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;');
+        }
+
+        function escapeXml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;')
+                      .replace(/'/g, '&apos;');
+        }
+
+        // Allow Enter key to submit forms
+        document.getElementById('nodeName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addNode();
+        });
+        document.getElementById('nodeGroup').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addNode();
+        });
+        document.getElementById('connType').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addConnection();
+        });
+
+        // Initialize on page load
+        initNetwork();
+    </script>
+</body>
+</html>
